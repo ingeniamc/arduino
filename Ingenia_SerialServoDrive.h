@@ -49,6 +49,9 @@ public:
     void enableMotor();
     void disableMotor();
 
+    // Homing
+    void doHoming(int8_t i8HomingMethod);
+
     // Motion funcions
     void setModeOfOperation(EDriveModes driverMode);
 
@@ -75,6 +78,14 @@ public:
     bool statuswordIsTargetReached();
     bool statuswordIsInternalLimitActive();
     bool statuswordIsInitialAngleDeterminationProcessFinished();
+
+    // Homing status functions
+    bool homingStatusIsInProgress();
+    bool homingStatusIsError();
+    bool homingStatusIsSuccess();
+    bool homingStatusIsAttained();
+    bool homingStatusIsInterrupted();
+    bool homingStatusNotStarted();
 
 private:
     void write(uint8_t u8Node, uint32_t u32Index, uint8_t u8SubIndex, uint32_t u32ObjSize, uint64_t value);

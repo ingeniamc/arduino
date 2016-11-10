@@ -559,7 +559,9 @@ bool Ingenia_SerialServoDrive::decodeMsg(const char* strMessage, TMessage *pMsg,
 #define STATUS_WORD_REGISTER_BITS_RESERVED               0x0100
 #define STATUS_WORD_REGISTER_BITS_REMOTE                 0x0200
 #define STATUS_WORD_REGISTER_BITS_TARGET_REACHED         0x0400
-#define STATUS_WORD_REGISTER_BITS_INTERNAL_LIMIT_ACTIVE  0x1000
+#define STATUS_WORD_REGISTER_BITS_INTERNAL_LIMIT_ACTIVE  0x0800
+#define STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_1      0x1000
+#define STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_2      0x2000
 #define STATUS_WORD_REGISTER_BITS_ANGLE_PROC_FINISHED    0x4000
 
 //
@@ -985,7 +987,7 @@ void Ingenia_SerialServoDrive::setTargetPosition(int32_t value, bool isImmediate
     u16ActualControlWord |= isHaltEnabled << 8;
 
     write(OBJECT_CONTROL_WORD, u16ActualControlWord);
-    
+
     //Low New Setpoint
     u16ActualControlWord &= ~(MODE_SPECIFIC_BITS_NEW_SETPOINT);
     write(OBJECT_CONTROL_WORD, u16ActualControlWord);
@@ -1040,20 +1042,6 @@ uint16_t Ingenia_SerialServoDrive::getStatusword()
 {
     return read(STATUSWORD_INDEX, STATUSWORD_SUBINDEX);
 }
-
-#define STATUS_WORD_REGISTER_BITS_READY_TO_SWITCH_ON     0x0001
-#define STATUS_WORD_REGISTER_BITS_SWITCHED_ON            0x0002
-#define STATUS_WORD_REGISTER_BITS_OPERATION_ENABLED      0x0004
-#define STATUS_WORD_REGISTER_BITS_FAULT                  0x0008
-#define STATUS_WORD_REGISTER_BITS_VOLTAGE_ENABLED        0x0010
-#define STATUS_WORD_REGISTER_BITS_QUICK_STOP             0x0020
-#define STATUS_WORD_REGISTER_BITS_SWITCH_ON_DISABLED     0x0040
-#define STATUS_WORD_REGISTER_BITS_WARNING                0x0080
-#define STATUS_WORD_REGISTER_BITS_RESERVED               0x0100
-#define STATUS_WORD_REGISTER_BITS_REMOTE                 0x0200
-#define STATUS_WORD_REGISTER_BITS_TARGET_REACHED         0x0400
-#define STATUS_WORD_REGISTER_BITS_INTERNAL_LIMIT_ACTIVE  0x1000
-#define STATUS_WORD_REGISTER_BITS_ANGLE_PROC_FINISHED    0x4000
 
 bool Ingenia_SerialServoDrive::statuswordIsReadyToSwitchOn()
 {
@@ -1113,4 +1101,60 @@ bool Ingenia_SerialServoDrive::statuswordIsInternalLimitActive()
 bool Ingenia_SerialServoDrive::statuswordIsInitialAngleDeterminationProcessFinished()
 {
     return (getStatusword() & STATUS_WORD_REGISTER_BITS_ANGLE_PROC_FINISHED) > 0;
+}
+
+bool Ingenia_SerialServoDrive::homingStatusIsInProgress()
+{
+    return ((getStatusword() & STATUS_WORD_REGISTER_BITS_TARGET_REACHED) == 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_1) == 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_2) == 0);
+}
+
+bool Ingenia_SerialServoDrive::homingStatusIsError()
+{
+    return (getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_2) > 0;
+}
+
+bool Ingenia_SerialServoDrive::homingStatusIsSuccess()
+{
+    return ((getStatusword() & STATUS_WORD_REGISTER_BITS_TARGET_REACHED) > 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_1) > 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_2) == 0);
+}
+
+bool Ingenia_SerialServoDrive::homingStatusIsAttained()
+{
+    return ((getStatusword() & STATUS_WORD_REGISTER_BITS_TARGET_REACHED) == 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_1) > 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_2) == 0);
+}
+
+
+bool Ingenia_SerialServoDrive::homingStatusIsInterrupted()
+{
+    return ((getStatusword() & STATUS_WORD_REGISTER_BITS_TARGET_REACHED) > 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_1) == 0) &&
+           ((getStatusword() & STATUS_WORD_REGISTER_BITS_OPMODE_SPECIFIC_2) == 0);
+}
+
+bool Ingenia_SerialServoDrive::homingStatusNotStarted()
+{
+    return this->homingStatusIsInterrupted();
+}
+
+void Ingenia_SerialServoDrive::doHoming(int8_t i8HomingMethod)
+{
+    this->setModeOfOperation(DRIVE_MODE_HOMING);
+    this->write(0x6098, 0x0, i8HomingMethod);
+
+    this->enableMotor();
+    this->enableMotor();
+
+    uint16_t controlWord;
+    controlWord = this->read(OBJECT_CONTROL_WORD);
+    controlWord &= ~ 0x0010;
+    this->write(OBJECT_CONTROL_WORD, controlWord);
+    controlWord = this->read(OBJECT_CONTROL_WORD);
+    controlWord |= 0x0010;
+    this->write(OBJECT_CONTROL_WORD, controlWord);
 }
