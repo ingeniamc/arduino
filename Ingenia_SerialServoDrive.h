@@ -77,10 +77,10 @@ public:
     bool statuswordIsInitialAngleDeterminationProcessFinished();
 
 private:
+    void write(uint8_t u8Node, uint32_t u32Index, uint8_t u8SubIndex, uint32_t u32ObjSize, uint64_t value);
     void write(uint32_t u32Index, uint8_t u8SubIndex, uint32_t u32ObjSize, uint64_t value);
-
+    
     void setTargetPosition(int32_t value, bool isImmediate, bool isRelative, bool isHaltEnabled);
-
 
     Stream * _virtualPort;
     bool _isBinaryEnabled = false;

@@ -101,8 +101,12 @@ void Ingenia_SerialServoDrive::write(uint32_t u32Index, uint8_t u8SubIndex, int8
     write(u32Index, u8SubIndex, 1, value);
 }
 
-
 void Ingenia_SerialServoDrive::write(uint32_t u32Index, uint8_t u8SubIndex, uint32_t u32ObjSize, uint64_t value)
+{
+    this->write(_u8Node, u32Index, u8SubIndex, u32ObjSize, value);
+}
+
+void Ingenia_SerialServoDrive::write(uint8_t u8Node, uint32_t u32Index, uint8_t u8SubIndex, uint32_t u32ObjSize, uint64_t value)
 {
     uint32_t u32Register;
     t_int64 i64DataValue;
@@ -128,7 +132,7 @@ void Ingenia_SerialServoDrive::write(uint32_t u32Index, uint8_t u8SubIndex, uint
 
     // Prepare message to send
     TMessage tMessage;
-    tMessage.b8ID = _u8Node;   
+    tMessage.b8ID = u8Node;   
     tMessage.u32Register = u32Register;    
     tMessage.eRegAccess = WRITE;  
     tMessage.b8DataLength = u32ObjSize;
@@ -1018,13 +1022,13 @@ int16_t Ingenia_SerialServoDrive::getActualTorque()
 
 void Ingenia_SerialServoDrive::enableBinary()
 {
-    this->write(0x2000, 0x8, (uint8_t) 1);
+    this->write(0x0, 0x2000, 0x8, 1, (uint8_t) 1);
     _isBinaryEnabled = true;
 }
 
 void Ingenia_SerialServoDrive::disableBinary()
 {
-    this->write(0x2000, 0x8, (uint8_t) 0);
+    this->write(0x0, 0x2000, 0x8, 1, (uint8_t) 0);
     _isBinaryEnabled = false;
 }
 
