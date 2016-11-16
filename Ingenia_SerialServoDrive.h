@@ -32,6 +32,8 @@ public:
     Ingenia_SerialServoDrive(Stream * virtualPort, uint8_t u8NodeID);
 
     uint32_t read(uint32_t u32Index, uint8_t u8SubIndex);
+    uint32_t read(uint32_t u32Index, uint8_t u8SubIndex, bool &bIsValid);
+
     void write(uint32_t u32Index, uint8_t u8SubIndex, uint64_t value);
     void write(uint32_t u32Index, uint8_t u8SubIndex, int64_t value);
     void write(uint32_t u32Index, uint8_t u8SubIndex, uint32_t value);

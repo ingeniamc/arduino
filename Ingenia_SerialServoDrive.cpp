@@ -20,6 +20,19 @@ Ingenia_SerialServoDrive::Ingenia_SerialServoDrive(Stream * virtualPort, uint8_t
 
 uint32_t Ingenia_SerialServoDrive::read(uint32_t u32Index, uint8_t u8SubIndex)
 {
+    uint32_t u32Message;
+    bool isValidRead = false;
+
+    while (!isValidRead)
+    {
+        u32Message = read(u32Index, u8SubIndex,isValidRead);
+    }
+
+    return u32Message;
+}
+
+uint32_t Ingenia_SerialServoDrive::read(uint32_t u32Index, uint8_t u8SubIndex, bool &bIsValid)
+{
     uint32_t u32Result = 0;
     PTMessage decodedMessage = new TMessage;
     TMessage tMessage;
@@ -31,6 +44,11 @@ uint32_t Ingenia_SerialServoDrive::read(uint32_t u32Index, uint8_t u8SubIndex)
     size_t eMsgLen;
     char* eMsgStr = new char[MAX_MSG_LEN];
     encodeMsg(&tMessage, eMsgStr, &eMsgLen, this->_isBinaryEnabled);
+
+    // Flush port
+    while (this->_virtualPort->available())
+        this->_virtualPort->read();
+
     serial_write(eMsgStr, eMsgLen);
 
     bool isValid = false;
@@ -43,18 +61,25 @@ uint32_t Ingenia_SerialServoDrive::read(uint32_t u32Index, uint8_t u8SubIndex)
             break;
         }
 
-        if (serial_read(1000) != 0)
+        if (serial_read(200) != 0)
         {
             decodeMsg((const char*)&serial_buf, decodedMessage, _isBinaryEnabled);
-            if (decodedMessage->u32Register == tMessage.u32Register)
+            if (decodedMessage->u32Register == tMessage.u32Register
+                && decodedMessage->eRegAccess == WRITE
+                && decodedMessage->b8ID == tMessage.b8ID)
             {
                 isValid = true;
             }
+
+            if (!isValid) serial_write(eMsgStr, eMsgLen);
         }
     }
+
     if (isValid)
         u32Result = decodedMessage->ti64Data.u32[0];
-
+    
+    bIsValid = isValid;
+    
     delete(eMsgStr);
     delete(decodedMessage);
     return u32Result;
@@ -767,10 +792,11 @@ Ingenia_SerialServoDrive::EStateMachineStatus Ingenia_SerialServoDrive::decodeSt
 
 void Ingenia_SerialServoDrive::goToStatusFrom(const EStateMachineStatus eCurrentStateMachineStatus, const EStateMachineStatus eDestinationStateMachineStatus)
 {
-    if (eCurrentStateMachineStatus != eDestinationStateMachineStatus)
+    EStateMachineStatus tCurrentStateMachineStatus = eCurrentStateMachineStatus;
+    while (tCurrentStateMachineStatus != eDestinationStateMachineStatus)
     {
         EStateMachineStatus nextState = eDestinationStateMachineStatus;
-        switch(eCurrentStateMachineStatus)
+        switch(tCurrentStateMachineStatus)
         {
             case STATUS_SWITCH_ON_DISABLED:
                 if ((eDestinationStateMachineStatus == STATUS_READY_TO_SWITCH_ON) ||
@@ -893,7 +919,7 @@ void Ingenia_SerialServoDrive::goToStatusFrom(const EStateMachineStatus eCurrent
         }
 
         verifyStatusIsReached(nextState);
-        goToStatusFrom(nextState, eDestinationStateMachineStatus);
+        tCurrentStateMachineStatus = nextState;
     }
 }
 
@@ -1147,7 +1173,6 @@ void Ingenia_SerialServoDrive::doHoming(int8_t i8HomingMethod)
     this->setModeOfOperation(DRIVE_MODE_HOMING);
     this->write(0x6098, 0x0, i8HomingMethod);
 
-    this->enableMotor();
     this->enableMotor();
 
     uint16_t controlWord;
