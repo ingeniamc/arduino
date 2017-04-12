@@ -1,4 +1,5 @@
 # Ingenia Serial Servo Drive Library
+[![Build Status](https://travis-ci.org/IngeniaMC/Ingenia-Serial-Servo-Drive-Library.svg?branch=master)](https://travis-ci.org/IngeniaMC/Ingenia-Serial-Servo-Drive-Library)
 ##### Ingenia servo drives master library for Arduino
 
 This library will abstract users from the servo drive communication protocol layer. This will allow the Arduino to interface with the Ingenia Servo Drives through serial communications and easyly prototipe a simple master for the ingenia servo drive with Arduino.
